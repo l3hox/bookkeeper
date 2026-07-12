@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Faktury</title>
+    <link rel="stylesheet" href="app/css/app.css">
+    <link rel="stylesheet" href="app/css/print.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">Faktury<small>místní fakturace</small></div>
+        <nav class="nav">
+            <a href="#/" data-view="dashboard">Přehled</a>
+            <a href="#/invoices" data-view="invoices">Faktury</a>
+            <a href="#/contacts" data-view="contacts">Kontakty</a>
+            <a href="#/reports" data-view="reports">Reporty</a>
+            <a href="#/settings" data-view="settings">Nastavení</a>
+        </nav>
+        <div class="sidebar-foot">Data zůstávají v tomto prohlížeči.</div>
+    </aside>
+    <main id="view"></main>
+    <script src="app/vendor/qrcode-generator-1.4.4.min.js"></script>
+    <script src="app/js/html.js"></script>
+    <script src="app/js/finance.js"></script>
+    <script src="app/js/payment.js"></script>
+    <script src="app/js/store.js"></script>
+    <script src="app/js/ares.js"></script>
+    <script src="app/js/invoiceDoc.js"></script>
+    <script src="app/js/app.js"></script>
+</body>
+</html>

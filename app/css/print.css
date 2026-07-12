@@ -1,0 +1,47 @@
+@page {
+    size: A4;
+    margin: 14mm 16mm;
+}
+
+@media print {
+    body {
+        display: block;
+        background: #fff;
+    }
+
+    .sidebar,
+    .view-head,
+    .notice,
+    .paid-line,
+    .filters,
+    .errors {
+        display: none !important;
+    }
+
+    main {
+        padding: 0;
+        max-width: none;
+    }
+
+    body[data-view="detail"] .paper {
+        border: none;
+        box-shadow: none;
+        max-width: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .doc {
+        font-size: 12.5px;
+    }
+
+    .doc-items td,
+    .doc-items th {
+        page-break-inside: avoid;
+    }
+
+    .doc-summary,
+    .doc-notes {
+        page-break-inside: avoid;
+    }
+}

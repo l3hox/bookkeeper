@@ -1,0 +1,66 @@
+{
+    "id": "test-invoice-1",
+    "type": "invoice",
+    "number": "20260001",
+    "variableSymbol": "20260001",
+    "contactId": "",
+    "supplier": {
+        "name": "Alice Example",
+        "street": "Vzorová 1",
+        "city": "Praha",
+        "zip": "11000",
+        "country": "Česká republika",
+        "ico": "12345678",
+        "dic": "CZ12345678",
+        "registration": "Fyzická osoba zapsaná v živnostenském rejstříku",
+        "email": "alice@example.com",
+        "phone": "+420600000001",
+        "web": "example.com"
+    },
+    "bank": {
+        "account": "19-2000145399/0800",
+        "iban": "CZ6508000000192000145399",
+        "swift": "GIBACZPX"
+    },
+    "vatMode": true,
+    "footNote": "Testovací patička dokladu.",
+    "customer": {
+        "name": "Bob Example & syn <s.r.o.>",
+        "street": "Zkušební 22/4",
+        "city": "Brno",
+        "zip": "60200",
+        "country": "Česká republika",
+        "ico": "87654321",
+        "dic": "CZ87654321"
+    },
+    "issueDate": "2026-07-01",
+    "dutyDate": "2026-06-30",
+    "dueDate": "2026-07-15",
+    "paymentMethod": "transfer",
+    "currency": "CZK",
+    "lines": [
+        {
+            "description": "Konzultace testovacího scénáře",
+            "quantity": 10,
+            "unit": "hod",
+            "unitPrice": 100000,
+            "vatRate": 21
+        },
+        {
+            "description": "Doprava na místo testu",
+            "quantity": 1,
+            "unit": "ks",
+            "unitPrice": 50000,
+            "vatRate": 12
+        }
+    ],
+    "reverseCharge": false,
+    "roundTotal": false,
+    "note": "Poznámka pro ověření vykreslení dokumentu.",
+    "paidDate": null,
+    "creditForNumber": "",
+    "creditForDate": "",
+    "creditReason": "",
+    "relatedProformaNumber": "",
+    "createdAt": "2026-07-01T08:00:00.000Z"
+}
