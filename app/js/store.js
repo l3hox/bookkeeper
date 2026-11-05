@@ -145,11 +145,11 @@ var Store = (() => {
         save('meta', meta);
     }
 
-    const BACKUP_APPLICATIONS = ['forge-invoices', 'my-invoices'];
+    const BACKUP_APPLICATIONS = ['bookkeeper', 'forge-invoices', 'my-invoices'];
 
     function exportBackup() {
         return {
-            application: 'forge-invoices',
+            application: 'bookkeeper',
             schemaVersion: SCHEMA_VERSION,
             exportedAt: new Date().toISOString(),
             settings: getSettings(),

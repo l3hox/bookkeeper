@@ -274,7 +274,7 @@ test('backup import accepts the legacy application name', () => {
 
 test('backup export and import round trip', () => {
     const backup = Store.exportBackup();
-    assert.strictEqual(backup.application, 'forge-invoices');
+    assert.strictEqual(backup.application, 'bookkeeper');
     Store.importBackup(JSON.parse(JSON.stringify(backup)));
     assert.deepStrictEqual(acrossRealms(Store.getInvoices()), [sampleInvoice]);
 });

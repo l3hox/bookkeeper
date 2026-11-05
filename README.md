@@ -1,6 +1,6 @@
-# forge-invoices
+# bookkeeper
 
-Local invoicing app for a Czech business, built as a replacement for fakturoid.cz. A static HTML application served by a small local Python server that keeps every document as a JSON file on disk. No build step and no third-party dependencies: `python3` and a browser are the whole runtime. All data stays on your computer.
+Local bookkeeping for a Czech business, starting with invoicing; built as a replacement for fakturoid.cz. A static HTML application served by a small local Python server that keeps every document as a JSON file on disk. No build step and no third-party dependencies: `python3` and a browser are the whole runtime. All data stays on your computer.
 
 ## Quick start
 
