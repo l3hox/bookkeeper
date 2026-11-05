@@ -370,6 +370,12 @@ td.num {
     font-weight: 500;
 }
 
+.archive-hint {
+    margin: -8px 0 16px;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
 .empty {
     color: var(--ink-soft);
     font-style: italic;

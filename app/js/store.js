@@ -1,11 +1,8 @@
 var Store = (() => {
     const SCHEMA_VERSION = 1;
-    const KEYS = {
-        settings: 'mi:settings',
-        contacts: 'mi:contacts',
-        invoices: 'mi:invoices',
-        meta: 'mi:meta',
-    };
+    const API_HEADER = 'X-Invoices-Api';
+    const servedOverHttp = typeof location !== 'undefined' && /^https?:$/.test(location.protocol);
+    const diskState = servedOverHttp ? loadDiskState() : null;
 
     function defaultSettings() {
         return {
@@ -38,7 +35,38 @@ var Store = (() => {
         };
     }
 
-    function load(key, fallback) {
+    function apiRequest(method, endpoint, body) {
+        const request = new XMLHttpRequest();
+        request.open(method, endpoint, false);
+        request.setRequestHeader(API_HEADER, '1');
+        if (body !== undefined) {
+            request.setRequestHeader('Content-Type', 'application/json');
+        }
+        request.send(body === undefined ? null : JSON.stringify(body));
+        return request;
+    }
+
+    function loadDiskState() {
+        let request;
+        try {
+            request = apiRequest('GET', 'api/state');
+        } catch (error) {
+            request = { status: 0, responseText: String(error) };
+        }
+        if (request.status !== 200) {
+            const message = 'Datový server neodpovídá, data nelze načíst z disku. Spusťte aplikaci příkazem „make run“ a otevřete adresu, kterou vypíše.';
+            alert(message);
+            throw new Error(`${message} (${request.status} ${request.responseText})`);
+        }
+        return JSON.parse(request.responseText);
+    }
+
+    function load(name, fallback) {
+        if (diskState) {
+            const stored = diskState[name];
+            return stored === null || stored === undefined ? fallback : JSON.parse(JSON.stringify(stored));
+        }
+        const key = `mi:${name}`;
         const raw = localStorage.getItem(key);
         if (raw === null) {
             return fallback;
@@ -52,12 +80,30 @@ var Store = (() => {
         }
     }
 
-    function save(key, value) {
-        localStorage.setItem(key, JSON.stringify(value));
+    function save(name, value) {
+        if (!diskState) {
+            localStorage.setItem(`mi:${name}`, JSON.stringify(value));
+            return;
+        }
+        const request = apiRequest('PUT', `api/${name}`, value);
+        if (request.status !== 200) {
+            const message = `Uložení na disk selhalo (${name}): ${request.status} ${request.responseText}`;
+            alert(message);
+            throw new Error(message);
+        }
+        diskState[name] = JSON.parse(JSON.stringify(value));
+    }
+
+    function storageLabel() {
+        return diskState ? `Data na disku: ${diskState.dataDir}` : 'Data jen v tomto prohlížeči. Pro uložení na disk spusťte „make run“.';
+    }
+
+    function dataDir() {
+        return diskState ? diskState.dataDir : null;
     }
 
     function getSettings() {
-        const stored = load(KEYS.settings, null);
+        const stored = load('settings', null);
         if (!stored) {
             return defaultSettings();
         }
@@ -72,31 +118,31 @@ var Store = (() => {
     }
 
     function saveSettings(settings) {
-        save(KEYS.settings, settings);
+        save('settings', settings);
     }
 
     function getContacts() {
-        return load(KEYS.contacts, []);
+        return load('contacts', []);
     }
 
     function saveContacts(contacts) {
-        save(KEYS.contacts, contacts);
+        save('contacts', contacts);
     }
 
     function getInvoices() {
-        return load(KEYS.invoices, []);
+        return load('invoices', []);
     }
 
     function saveInvoices(invoices) {
-        save(KEYS.invoices, invoices);
+        save('invoices', invoices);
     }
 
     function getMeta() {
-        return load(KEYS.meta, { schemaVersion: SCHEMA_VERSION, lastBackupAt: null });
+        return load('meta', { schemaVersion: SCHEMA_VERSION, lastBackupAt: null });
     }
 
     function saveMeta(meta) {
-        save(KEYS.meta, meta);
+        save('meta', meta);
     }
 
     const BACKUP_APPLICATIONS = ['forge-invoices', 'my-invoices'];
@@ -146,5 +192,7 @@ var Store = (() => {
         markBackupDone,
         exportBackup,
         importBackup,
+        storageLabel,
+        dataDir,
     };
 })();

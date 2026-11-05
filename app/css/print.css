@@ -13,6 +13,7 @@
     .view-head,
     .notice,
     .paid-line,
+    .archive-hint,
     .filters,
     .errors {
         display: none !important;

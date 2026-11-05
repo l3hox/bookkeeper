@@ -2,3 +2,4 @@
 node_modules/
 .worktrees/
 *.bak
+__pycache__/

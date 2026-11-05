@@ -1,16 +1,25 @@
 # forge-invoices
 
-Local invoicing app for a Czech business, built as a replacement for fakturoid.cz. A static HTML application with no server, no build step, and no external dependencies at runtime: open `index.html` in a browser and start invoicing. All data stays on your computer.
+Local invoicing app for a Czech business, built as a replacement for fakturoid.cz. A static HTML application served by a small local Python server that keeps every document as a JSON file on disk. No build step and no third-party dependencies: `python3` and a browser are the whole runtime. All data stays on your computer.
 
 ## Quick start
 
-Open `index.html` directly (double-click), or serve the directory if you prefer an HTTP origin:
-
 ```sh
-open index.html
+make run                          # data in ~/Documents/Finance
+make run DATA=~/Finance PORT=8765 # another data directory or port
 ```
 
-On first run the dashboard shows a setup checklist: fill in your supplier details and bank account in Nastavení, add a contact, issue the first invoice.
+Open the address it prints (default <http://127.0.0.1:8765/>). On first run the dashboard shows a setup checklist: fill in your supplier details and bank account in Nastavení, add a contact, issue the first invoice.
+
+Opening `index.html` directly still works, but then the data live only in that browser's localStorage. The sidebar says which mode is active.
+
+### Moving data from the browser to disk
+
+Data entered in the `file://` version sit in that origin's localStorage, which the `http://127.0.0.1` page cannot read.
+
+1. Open `index.html` the old way, go to Nastavení, Záloha dat, and download a backup.
+2. Run `make run`, open the printed address, go to Nastavení, and restore that backup. Every part is written to the data directory.
+3. Check that the files exist: `ls ~/Documents/Finance/invoices`.
 
 ## Features
 
@@ -24,11 +33,22 @@ On first run the dashboard shows a setup checklist: fill in your supplier detail
 
 ## Data and backups
 
-Data live in the browser's localStorage under `mi:` keys, scoped to the way you open the app (the `file://` path or the HTTP origin). Consequences:
+The data directory (default `~/Documents/Finance`, set with `DATA=` or `INVOICES_DATA_DIR`) holds plain, diffable JSON:
 
-- Opening the app from a different path or browser shows an empty database. Use backup export/import to move data.
-- Clearing browser site data deletes your invoices. **Download a backup (Nastavení, Záloha dat) regularly.** The app reminds you when the last backup is older than a month.
-- Tax documents must be archived for 10 years ([§ 35 ZDPH][ZDPH-35]). Keep backup JSON files (and PDF copies of issued invoices) somewhere durable.
+```text
+settings.json          supplier, bank, invoicing defaults
+meta.json              schema version, last backup time
+contacts/<id>.json     one file per contact
+invoices/<number>.json one file per document, named by its number
+pdf/                   printed documents; save the print dialog's PDF here as <number>.pdf
+trash/                 every replaced or removed file, timestamped; nothing is ever deleted
+```
+
+- Every write goes to a temporary file that is flushed and then renamed over the target, so a crash never leaves a half-written document.
+- The server refuses a data directory inside this repository, so invoices cannot be committed by accident.
+- The server listens on 127.0.0.1 only, serves only `index.html` and `app/`, and its API answers only requests carrying the app's own header, which other web pages cannot send without a refused CORS preflight.
+- Back the data directory up with the rest of your files (Time Machine, an off-site copy). The JSON backup export and import remain available for moving data between machines.
+- Tax documents must be archived for 10 years ([§ 35 ZDPH][ZDPH-35]); see [Právní náležitosti](docs/Právní%20náležitosti.md) for the non-VAT-payer case.
 
 Backups contain personal and business data. Do not commit them to a public repository.
 
@@ -45,17 +65,20 @@ index.html              app shell
 app/css/                screen and print stylesheets
 app/js/finance.js       money math in integer haléře, VAT breakdown, cs-CZ formatting
 app/js/payment.js       Czech account to IBAN, SPAYD descriptor, QR rendering
-app/js/store.js         localStorage persistence, backup export/import
+app/js/store.js         persistence (data server on disk, or localStorage), backup export/import
 app/js/ares.js          ARES lookup and IČO checksum validation
 app/js/invoiceDoc.js    printable document renderer
 app/js/app.js           state, routing, views, actions
-tests/run-tests.js      unit tests (node tests/run-tests.js)
+tests/run-tests.js      app unit tests
+server/local_server.py  local server and the data directory store
+tests/test_local_server.py  server unit tests
+Makefile                make run, make test
 ```
 
 Run the tests:
 
 ```sh
-node tests/run-tests.js
+make test
 ```
 
 Legal background and which statutory requirement maps to which app behavior: [docs/Právní náležitosti.md](docs/Právní%20náležitosti.md).

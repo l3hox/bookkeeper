@@ -279,4 +279,91 @@ test('backup export and import round trip', () => {
     assert.deepStrictEqual(acrossRealms(Store.getInvoices()), [sampleInvoice]);
 });
 
+function loadStoreServedOverHttp(serverState, failingStatus) {
+    const requests = [];
+    const alerts = [];
+    class XMLHttpRequestMock {
+        open(method, url, isAsync) {
+            this.method = method;
+            this.url = url;
+            this.isAsync = isAsync;
+            this.headers = {};
+        }
+        setRequestHeader(name, value) {
+            this.headers[name] = value;
+        }
+        send(body) {
+            requests.push({ method: this.method, url: this.url, isAsync: this.isAsync, headers: this.headers, body });
+            if (this.method === 'GET') {
+                this.status = 200;
+                this.responseText = JSON.stringify(serverState);
+                return;
+            }
+            this.status = failingStatus || 200;
+            this.responseText = failingStatus ? '{"error":"disk full"}' : '{"saved":true}';
+        }
+    }
+    const servedContext = vm.createContext({
+        console,
+        Intl,
+        localStorage: createLocalStorageMock(),
+        location: { protocol: 'http:' },
+        XMLHttpRequest: XMLHttpRequestMock,
+        alert: message => alerts.push(message),
+    });
+    for (const file of ['app/js/finance.js', 'app/js/store.js']) {
+        vm.runInContext(readFileSync(path.join(appRoot, file), 'utf8'), servedContext, { filename: file });
+    }
+    return { servedStore: servedContext.Store, requests, alerts, servedLocalStorage: servedContext.localStorage };
+}
+
+const diskState = {
+    settings: { supplier: { name: 'Alice Example' }, vatPayer: false },
+    meta: null,
+    contacts: [{ id: 'contact-1', name: 'Bob Example' }],
+    invoices: [sampleInvoice],
+    dataDir: '/Users/alice/Documents/Finance',
+};
+
+test('served over http the store reads its state from the data server', () => {
+    const { servedStore, requests } = loadStoreServedOverHttp(diskState);
+    assert.deepStrictEqual(acrossRealms(servedStore.getInvoices()), [sampleInvoice]);
+    assert.strictEqual(servedStore.getContacts()[0].name, 'Bob Example');
+    assert.strictEqual(servedStore.getSettings().supplier.name, 'Alice Example');
+    assert.strictEqual(servedStore.dataDir(), '/Users/alice/Documents/Finance');
+    assert.deepStrictEqual(
+        acrossRealms(requests.map(request => [request.method, request.url, request.headers['X-Invoices-Api']])),
+        [['GET', 'api/state', '1']],
+    );
+});
+
+test('served over http a save is written through the api and never to localStorage', () => {
+    const { servedStore, requests, servedLocalStorage } = loadStoreServedOverHttp(diskState);
+    servedStore.saveContacts([{ id: 'contact-2', name: 'Carol Example' }]);
+    const put = requests[requests.length - 1];
+    assert.strictEqual(put.method, 'PUT');
+    assert.strictEqual(put.url, 'api/contacts');
+    assert.strictEqual(put.isAsync, false);
+    assert.deepStrictEqual(JSON.parse(put.body), [{ id: 'contact-2', name: 'Carol Example' }]);
+    assert.strictEqual(servedStore.getContacts()[0].name, 'Carol Example');
+    assert.deepStrictEqual(acrossRealms(servedLocalStorage.keys()), []);
+});
+
+test('served over http a failed save alerts and throws instead of losing data quietly', () => {
+    const { servedStore, alerts } = loadStoreServedOverHttp(diskState, 500);
+    assert.throws(() => servedStore.saveInvoices([]), /Uložení na disk selhalo \(invoices\): 500/);
+    assert.strictEqual(alerts.length, 1);
+    assert.deepStrictEqual(acrossRealms(servedStore.getInvoices()), [sampleInvoice]);
+});
+
+test('served over http a backup import writes every part to disk', () => {
+    const { servedStore, requests } = loadStoreServedOverHttp(diskState);
+    const backup = JSON.parse(JSON.stringify(Store.exportBackup()));
+    servedStore.importBackup(backup);
+    assert.deepStrictEqual(
+        acrossRealms(requests.filter(request => request.method === 'PUT').map(request => request.url)),
+        ['api/settings', 'api/contacts', 'api/invoices'],
+    );
+});
+
 console.log(process.exitCode ? 'TESTS FAILED' : `all ${testCount} tests passed`);
