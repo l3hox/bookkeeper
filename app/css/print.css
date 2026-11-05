@@ -4,6 +4,12 @@
 }
 
 @media print {
+    html,
+    body {
+        height: auto;
+        min-height: 0;
+    }
+
     body {
         display: block;
         background: #fff;
