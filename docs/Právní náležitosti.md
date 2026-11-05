@@ -1,6 +1,6 @@
 # Právní náležitosti dokladů
 
-Přehled zákonných požadavků na vystavované doklady a jak je aplikace pokrývá. Stav legislativy k červenci 2026; před spolehnutím na konkrétní paragraf ověřte aktuální znění na odkazech níže.
+Přehled zákonných požadavků na vystavované doklady a jak je aplikace pokrývá. Stav legislativy ověřen 5. 11. 2026; před spolehnutím na konkrétní paragraf ověřte aktuální znění na odkazech níže.
 
 ## Daňový doklad (plátce DPH)
 
@@ -34,13 +34,23 @@ Zálohová faktura není daňovým dokladem; aplikace ji tak označuje a netiskn
 
 ## Neplátce DPH
 
-Faktura neplátce není daňovým dokladem. Musí splnit náležitosti účetního dokladu ([§ 11 zákona č. 563/1991 Sb., o účetnictví][ZOU-11]) a obchodní listiny ([§ 435 zákona č. 89/2012 Sb., občanský zákoník][OZ-435]): jméno, sídlo, IČO a údaj o zápisu v obchodním rejstříku nebo jiné evidenci. V režimu neplátce aplikace skryje sloupce DPH a doplní text „Dodavatel není plátcem DPH."
+Faktura neplátce není daňovým dokladem. Povinné údaje stanoví občanský zákoník pro obchodní listiny ([§ 435 OZ][OZ-435]): jméno a sídlo podnikatele, identifikační číslo, a údaj o zápisu do rejstříku. Podnikatel zapsaný v obchodním rejstříku uvede údaj o zápisu včetně oddílu a vložky; podnikatel nezapsaný ve veřejném rejstříku, který je zapsán v jiné evidenci, uvede údaj o svém zápisu do této evidence. Pro OSVČ zapsanou v živnostenském rejstříku jde tedy o povinný údaj, například „Fyzická osoba zapsaná v živnostenském rejstříku“ ([OZ-435-TEXT], [EPRAVO-LISTINY]). Zákon nepředepisuje uvést evidující živnostenský úřad; uvést ho lze, povinnost jsme v primárním textu nenašli.
 
-Údaj o zápisu (například „Fyzická osoba zapsaná v živnostenském rejstříku" nebo spisová značka) se vyplňuje v Nastavení a tiskne se na každém dokladu.
+Aplikace v režimu neplátce skryje sloupce DPH, netiskne DUZP a doplní text „Dodavatel není plátcem DPH.“ Uložení dokladu odmítne, pokud v Nastavení chybí jméno, sídlo, IČO nebo údaj o zápisu.
+
+Náležitosti účetního dokladu ([§ 11 zákona o účetnictví][ZOU-11]) se týkají účetních jednotek. OSVČ, která vede daňovou evidenci a nikoli účetnictví, je na vystavené faktuře povinně neuvádí ([POHODA-DOKLAD]). Uvádějí se běžně (označení dokladu, popis plnění, částka, datum vystavení) a aplikace je tiskne vždy.
+
+### Hranice pro registraci k DPH
+
+Od 1. 1. 2025 se obrat sleduje za kalendářní rok. Po překročení 2 000 000 Kč se osoba stává plátcem od 1. ledna následujícího roku a přihlášku k registraci podává do 10 pracovních dnů od překročení; po překročení 2 536 500 Kč se stává plátcem hned následujícím dnem ([FS-PLATCOVSTVI], [BUSINESSINFO-DPH-2026]). Aplikace na přehledu upozorní, když obrat v CZK za kalendářní rok překročí 90 % první hranice; doklady v cizí měně do součtu nezapočítá.
+
+### Elektronická fakturace
+
+Pro tuzemský styk mezi podnikateli není elektronická faktura v ČR k 5. 11. 2026 povinná; povinně elektronické faktury přijímají jen veřejné instituce ([FAKTUROID-DIGI], neověřeno v primárním zdroji). Směrnice EU 2025/516 (ViDA) zavádí povinnou elektronickou fakturaci pro přeshraniční plnění mezi podnikateli od 1. 7. 2030 ([TRIS-VIDA]). Český návrh na povinnou tuzemskou e-fakturaci jsme nenašli; Slovensko ji zavádí pro plátce od 1. 1. 2027.
 
 ## Uchovávání dokladů
 
-Daňové doklady se uchovávají 10 let od konce zdaňovacího období, ve kterém se plnění uskutečnilo ([§ 35 ZDPH][ZDPH-35]). Doporučený postup s touto aplikací: pravidelně stahovat JSON zálohu a u vystavených faktur ukládat i PDF kopii.
+Plátce uchovává daňové doklady 10 let od konce zdaňovacího období, ve kterém se plnění uskutečnilo ([§ 35 ZDPH][ZDPH-35]). Neplátce vede doklady k daňové evidenci po dobu, kdy lze daň stanovit (daňový řád); pro jistotu doporučujeme také 10 let (délka lhůty pro neplátce neověřena v primárním textu). Aplikace spuštěná přes `make run` drží každý doklad jako JSON soubor v datové složce a vytištěné PDF patří do její podsložky `pdf/`; datovou složku zálohujte (Time Machine, kopie mimo počítač).
 
 Vystavené doklady se nemažou; číselná řada má zůstat souvislá. Aplikace před smazáním dokladu varuje a v Nastavení hlásí mezery v řadách. Chybný doklad se řeší opravným daňovým dokladem, ne smazáním.
 
@@ -56,3 +66,10 @@ QR kód na dokladu používá standard Short Payment Descriptor České bankovn�
 [OZ-435]: https://www.zakonyprolidi.cz/cs/2012-89#p435 "Zákon č. 89/2012 Sb., § 435, obchodní listiny"
 [KONSOLIDACE]: https://www.zakonyprolidi.cz/cs/2023-349 "Zákon č. 349/2023 Sb., konsolidační balíček"
 [SPAYD]: https://qr-platba.cz/pro-vyvojare/ "QR platba, standard Short Payment Descriptor"
+[OZ-435-TEXT]: https://www.podnikatel.cz/zakony/novy-obcansky-zakonik/zneni-20230106/f4580257/ "Občanský zákoník, díl 5 Podnikatel, znění od 6. 1. 2023 (podnikatel.cz)"
+[EPRAVO-LISTINY]: https://epravo.cz/top/clanky/povinna-identifikace-podnikatele-na-obchodnich-listinach-51933.html "epravo.cz, Povinná identifikace podnikatele na obchodních listinách"
+[POHODA-DOKLAD]: https://portal.pohoda.cz/dane-ucetnictvi-mzdy/dph/faktura-nebo-danovy-doklad/ "Pohoda, Faktura nebo daňový doklad"
+[FS-PLATCOVSTVI]: https://financnisprava.gov.cz/assets/cs/prilohy/d-seznam-dani/11977_25_Informace_ke_zmenam_v_platcovstv2025.pdf "Finanční správa, Informace ke změnám v plátcovství od 1. 1. 2025"
+[BUSINESSINFO-DPH-2026]: https://www.businessinfo.cz/clanky/pozor-na-zmeny-v-dph-nektere-plati-od-1-ledna-2026-co-museji-podnikatele-udelat/ "BusinessInfo, změny v DPH od 1. ledna 2026"
+[FAKTUROID-DIGI]: https://www.fakturoid.cz/almanach/zacatky-podnikani/povinna-digitalizace-faktur "Fakturoid, Povinná digitalizace faktur"
+[TRIS-VIDA]: https://technical-regulation-information-system.ec.europa.eu/cs/notification/27201/print "TRIS, oznámení odkazující na směrnici 2025/516"

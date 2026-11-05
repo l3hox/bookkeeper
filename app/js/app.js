@@ -163,8 +163,33 @@ var App = (() => {
             : 'Zatím nemáte žádnou zálohu.';
         return `
             <div class="notice">
-                <p>Data žijí jen v tomto prohlížeči. ${reason}</p>
+                <p>${Store.dataDir() ? `Data jsou na disku ve složce ${esc(Store.dataDir())}; zálohujte ji spolu s ostatními soubory.` : 'Data žijí jen v tomto prohlížeči.'} ${reason}</p>
                 <button class="btn btn-small" data-action="export-backup">Stáhnout zálohu</button>
+            </div>`;
+    }
+
+    const VAT_REGISTRATION_LIMIT_HALERE = 2000000 * 100;
+    const VAT_REGISTRATION_WARNING_SHARE = 0.9;
+
+    function turnoverThisYearCzk(year) {
+        return invoices
+            .filter(invoice => (invoice.type === 'invoice' || invoice.type === 'credit')
+                && (invoice.currency || 'CZK') === 'CZK'
+                && (invoice.issueDate || '').startsWith(year))
+            .reduce((sum, invoice) => sum + invoiceTotal(invoice), 0);
+    }
+
+    function vatRegistrationNotice(year) {
+        if (settings.vatPayer) {
+            return '';
+        }
+        const turnover = turnoverThisYearCzk(year);
+        if (turnover < VAT_REGISTRATION_LIMIT_HALERE * VAT_REGISTRATION_WARNING_SHARE) {
+            return '';
+        }
+        return `
+            <div class="notice">
+                <p>Obrat v CZK za rok ${year} je ${Finance.formatMoney(turnover, 'CZK')}. Po překročení 2 000 000 Kč za kalendářní rok se stáváte plátcem DPH od 1. ledna následujícího roku a přihlášku podáváte do 10 pracovních dnů od překročení (§ 6 a § 94 ZDPH). Doklady v cizí měně do součtu nejsou započteny.</p>
             </div>`;
     }
 
@@ -179,7 +204,7 @@ var App = (() => {
                         <li><a href="#/contacts">Přidejte prvního odběratele do Kontaktů</a></li>
                         <li><a href="#/invoices/new">Vystavte první fakturu</a></li>
                     </ol>
-                    <p>Vše zůstává ve vašem prohlížeči, žádná data neopouštějí tento počítač.</p>
+                    <p>${esc(Store.storageLabel())} Žádná data neopouštějí tento počítač.</p>
                 </div>`;
         }
         const thisYear = String(new Date().getFullYear());
@@ -201,6 +226,7 @@ var App = (() => {
                 </div>
             </header>
             ${backupNotice()}
+            ${vatRegistrationNotice(thisYear)}
             <div class="tiles">
                 <div class="tile"><span class="tile-label">Neuhrazeno</span><span class="tile-value">${formatCurrencySums(sumByCurrency(unpaid))}</span></div>
                 <div class="tile ${overdue.length ? 'tile-alert' : ''}"><span class="tile-label">Po splatnosti</span><span class="tile-value">${formatCurrencySums(sumByCurrency(overdue))}</span></div>
@@ -311,10 +337,11 @@ var App = (() => {
                     ${typeActions.join('')}
                     <a class="btn" href="#/invoice/${invoice.id}/edit">Upravit</a>
                     <button class="btn" data-action="toggle-paid" data-id="${invoice.id}">${status === 'paid' ? 'Zrušit úhradu' : 'Uhrazeno'}</button>
-                    <button class="btn btn-primary" data-action="print">Tisk / PDF</button>
+                    <button class="btn btn-primary" data-action="print" data-number="${esc(invoice.number)}">Tisk / PDF</button>
                 </div>
             </header>
             ${status === 'paid' ? `<p class="paid-line">Uhrazeno ${Finance.formatDate(invoice.paidDate)}</p>` : ''}
+            ${Store.dataDir() ? `<p class="archive-hint">PDF uložte jako ${esc(invoice.number)}.pdf do složky ${esc(Store.dataDir())}/pdf.</p>` : ''}
             <div class="paper" id="print-area">${InvoiceDoc.render(invoice)}</div>`;
     }
 
@@ -424,6 +451,16 @@ var App = (() => {
         const supplier = editorDraft.snapshot ? editorDraft.snapshot.supplier : settings.supplier;
         if (!supplier.name) {
             errors.push('V Nastavení chybí údaje dodavatele.');
+        } else {
+            if (!supplier.street || !supplier.city) {
+                errors.push('V Nastavení chybí sídlo dodavatele (povinný údaj obchodní listiny, § 435 občanského zákoníku).');
+            }
+            if (!supplier.ico) {
+                errors.push('V Nastavení chybí IČO dodavatele (§ 435 občanského zákoníku).');
+            }
+            if (!supplier.registration) {
+                errors.push('V Nastavení chybí údaj o zápisu v rejstříku nebo evidenci, např. „Fyzická osoba zapsaná v živnostenském rejstříku“ (§ 435 občanského zákoníku).');
+            }
         }
         if (vatMode && !supplier.dic) {
             errors.push('Jste plátce DPH, ale v Nastavení chybí vaše DIČ (povinná náležitost daňového dokladu).');
@@ -1097,9 +1134,13 @@ var App = (() => {
             case 'open-invoice':
                 location.hash = `#/invoice/${element.dataset.id}`;
                 break;
-            case 'print':
+            case 'print': {
+                const previousTitle = document.title;
+                document.title = element.dataset.number || previousTitle;
                 window.print();
+                document.title = previousTitle;
                 break;
+            }
             case 'toggle-paid': {
                 const invoice = findInvoice(element.dataset.id);
                 invoice.paidDate = invoice.paidDate ? null : Finance.todayIso();
@@ -1366,6 +1407,7 @@ var App = (() => {
         contacts = Store.getContacts();
         invoices = Store.getInvoices();
         viewRoot = document.getElementById('view');
+        document.querySelector('.sidebar-foot').textContent = Store.storageLabel();
         bindRootEvents();
         window.addEventListener('hashchange', render);
         render();
