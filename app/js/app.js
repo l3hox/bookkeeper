@@ -16,6 +16,10 @@ var App = (() => {
     const UNIT_SUGGESTIONS = ['ks', 'hod', 'den', 'měsíc', 'km', 'kg', 'm²'];
     const CURRENCIES = ['CZK', 'EUR', 'USD'];
     const VAT_RATES = [21, 12, 0];
+    const FREE_TEXT_TEMPLATE = 'Fakturuji Vám za provedení díla podle smlouvy o dílo ze dne [datum smlouvy] '
+        + 'v rozsahu specifikovaném v Příloze č. 1 ([název projektu]), milník [označení], '
+        + 'akceptováno dne [datum akceptace].';
+    const UNFILLED_PLACEHOLDER = /\[[^\]]+\]/;
 
     let settings = null;
     let contacts = [];
@@ -365,6 +369,7 @@ var App = (() => {
             dueDate: Finance.addDays(issueDate, settings.invoicing.dueDays),
             paymentMethod: 'transfer',
             currency: settings.invoicing.currency,
+            itemsMode: 'lines',
             lines: [emptyLine()],
             reverseCharge: false,
             roundTotal: settings.invoicing.roundTotal,
@@ -391,6 +396,7 @@ var App = (() => {
             dueDate: invoice.dueDate,
             paymentMethod: invoice.paymentMethod,
             currency: invoice.currency,
+            itemsMode: invoice.itemsMode === 'text' ? 'text' : 'lines',
             lines: invoice.lines.map(line => ({
                 description: line.description,
                 quantity: String(line.quantity).replace('.', ','),
@@ -471,6 +477,9 @@ var App = (() => {
         if (editorDraft.type === 'credit' && !editorDraft.creditReason.trim()) {
             errors.push('Vyplňte důvod opravy (povinná náležitost opravného daňového dokladu).');
         }
+        if (editorDraft.itemsMode === 'text') {
+            return errors.concat(freeTextErrors(editorDraft.lines[0]));
+        }
         const usableLines = editorDraft.lines.filter(line => line.description.trim());
         if (usableLines.length === 0) {
             errors.push('Přidejte alespoň jednu položku s popisem.');
@@ -484,6 +493,44 @@ var App = (() => {
             }
         }
         return errors;
+    }
+
+    function freeTextErrors(line) {
+        const errors = [];
+        const text = line.description.trim();
+        if (!text) {
+            errors.push('Vyplňte text předmětu plnění.');
+        } else if (UNFILLED_PLACEHOLDER.test(text)) {
+            errors.push('Text předmětu plnění obsahuje nevyplněný údaj v hranatých závorkách.');
+        }
+        if (Finance.parseAmount(line.unitPrice) === null) {
+            errors.push('Zadejte platnou částku.');
+        }
+        return errors;
+    }
+
+    function freeTextLineFrom(lines) {
+        const filled = lines.find(line => line.description.trim()) || lines[0] || emptyLine();
+        return {
+            ...filled,
+            description: filled.description.trim() ? filled.description : FREE_TEXT_TEMPLATE,
+            quantity: '1',
+            unit: '',
+        };
+    }
+
+    function switchItemsMode(mode) {
+        if (mode === editorDraft.itemsMode) {
+            return;
+        }
+        if (mode === 'text') {
+            const filledCount = editorDraft.lines.filter(line => line.description.trim()).length;
+            if (filledCount > 1 && !confirm('Volný text má jen jednu částku. Zachová se první vyplněná položka, ostatní se odeberou. Pokračovat?')) {
+                return;
+            }
+            editorDraft.lines = [freeTextLineFrom(editorDraft.lines)];
+        }
+        editorDraft.itemsMode = mode;
     }
 
     function draftToInvoice() {
@@ -512,8 +559,10 @@ var App = (() => {
             dueDate: editorDraft.dueDate,
             paymentMethod: editorDraft.paymentMethod,
             currency: editorDraft.currency,
+            itemsMode: editorDraft.itemsMode,
             lines: editorDraft.lines
                 .filter(line => line.description.trim())
+                .slice(0, editorDraft.itemsMode === 'text' ? 1 : undefined)
                 .map(line => ({
                     description: line.description.trim(),
                     quantity: Finance.parseDecimal(line.quantity),
@@ -555,6 +604,49 @@ var App = (() => {
             ${rounding}
             <div class="totals-row totals-grand"><span>Celkem</span><span>${Finance.formatMoney(totals.total, currency)}</span></div>
             ${currencyHint}`;
+    }
+
+    function itemsModeHtml() {
+        const option = (mode, label) => `
+            <label class="check">
+                <input type="radio" name="items-mode" value="${mode}" ${editorDraft.itemsMode === mode ? 'checked' : ''}> ${label}
+            </label>`;
+        return `
+            <div class="items-mode" data-action-change="items-mode">
+                ${option('lines', 'Položky (množství, jednotka, cena)')}
+                ${option('text', 'Volný text s jednou částkou')}
+            </div>`;
+    }
+
+    function editorFreeTextHtml() {
+        const vatMode = editorDraft.snapshot ? editorDraft.snapshot.vatMode : settings.vatPayer;
+        const line = editorDraft.lines[0];
+        return `
+            <label>Předmět plnění
+                <textarea data-line-field="description" data-index="0" rows="4">${esc(line.description)}</textarea>
+            </label>
+            <p class="hint">Údaje v hranatých závorkách nahraďte skutečnými; s nimi doklad nepůjde uložit.</p>
+            <div class="free-text-amount">
+                <label>Částka${vatMode ? ' bez DPH' : ''}
+                    <input type="text" class="num-input" data-line-field="unitPrice" data-index="0" value="${esc(line.unitPrice)}" placeholder="0,00">
+                </label>
+                ${vatMode ? `
+                    <label>DPH
+                        <select data-line-field="vatRate" data-index="0">
+                            ${VAT_RATES.map(rate => `<option value="${rate}" ${Number(line.vatRate) === rate ? 'selected' : ''}>${rate} %</option>`).join('')}
+                        </select>
+                    </label>` : ''}
+            </div>`;
+    }
+
+    function editorItemsHtml() {
+        if (editorDraft.itemsMode === 'text') {
+            return `${itemsModeHtml()}${editorFreeTextHtml()}`;
+        }
+        return `
+            ${itemsModeHtml()}
+            ${editorLinesHtml()}
+            <button type="button" class="btn btn-small" data-action="add-line">Přidat položku</button>`;
     }
 
     function editorLinesHtml() {
@@ -677,9 +769,8 @@ var App = (() => {
                     </fieldset>
                 </div>
                 <fieldset class="panel">
-                    <legend>Položky</legend>
-                    ${editorLinesHtml()}
-                    <button type="button" class="btn btn-small" data-action="add-line">Přidat položku</button>
+                    <legend>Předmět plnění</legend>
+                    ${editorItemsHtml()}
                 </fieldset>
                 <div class="editor-grid">
                     <fieldset class="panel">
@@ -1369,6 +1460,10 @@ var App = (() => {
                     render();
                     break;
                 }
+                case 'items-mode':
+                    switchItemsMode(input.value);
+                    render();
+                    break;
                 case 'report-year':
                     reportYear = input.value;
                     render();

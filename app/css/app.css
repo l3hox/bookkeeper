@@ -785,6 +785,30 @@ label.check input {
     text-align: right;
 }
 
+.doc-items-text .col-desc {
+    width: auto;
+    padding-right: 24px;
+    line-height: 1.55;
+}
+
+.items-mode {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 14px;
+}
+
+.free-text-amount {
+    display: flex;
+    gap: 14px;
+    align-items: end;
+}
+
+.free-text-amount .num-input {
+    width: 160px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
 .doc-summary {
     display: flex;
     justify-content: space-between;

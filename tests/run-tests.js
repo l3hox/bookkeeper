@@ -237,6 +237,47 @@ test('proforma document is marked as not a tax document and hides duzp', () => {
     assert.doesNotMatch(rendered, /Datum uskutečnění plnění/);
 });
 
+const freeTextLine = {
+    description: 'Fakturuji Vám za provedení testovacího díla\nakceptovaného dne 1. 7. 2026.',
+    quantity: 1,
+    unit: '',
+    unitPrice: 12345600,
+    vatRate: 0,
+};
+
+test('free text document shows the text and one amount without quantity columns', () => {
+    const rendered = InvoiceDoc.render({
+        ...sampleInvoice,
+        vatMode: false,
+        itemsMode: 'text',
+        lines: [freeTextLine],
+    });
+    assert.match(rendered, /Předmět plnění/);
+    assert.match(rendered, /Fakturuji Vám za provedení testovacího díla<br>akceptovaného dne 1\. 7\. 2026\./);
+    assert.match(rendered, /<th class="num">Částka<\/th>/);
+    assert.match(rendered, /K úhradě<\/span>\s*<span>123\s456,00\sKč/u);
+    assert.doesNotMatch(rendered, /Množství/);
+    assert.doesNotMatch(rendered, /Cena za MJ/);
+});
+
+test('free text document of a vat payer shows the rate and the vat recap', () => {
+    const rendered = InvoiceDoc.render({
+        ...sampleInvoice,
+        itemsMode: 'text',
+        lines: [{ ...freeTextLine, vatRate: 21 }],
+    });
+    assert.match(rendered, /<th class="num">Základ<\/th>/);
+    assert.match(rendered, /DPH 21 %/);
+    assert.match(rendered, /K úhradě<\/span>\s*<span>149\s381,76\sKč/u);
+});
+
+test('free text mode with several lines still lists every line', () => {
+    const rendered = InvoiceDoc.render({ ...sampleInvoice, itemsMode: 'text' });
+    assert.match(rendered, /Konzultace testovacího scénáře/);
+    assert.match(rendered, /Doprava na místo testu/);
+    assert.match(rendered, /Množství/);
+});
+
 test('store preserves corrupt data before falling back', () => {
     localStorageMock.setItem('mi:contacts', '{broken json');
     const contacts = acrossRealms(Store.getContacts());

@@ -80,7 +80,33 @@ var InvoiceDoc = (() => {
         return rows.join('');
     }
 
+    function freeTextTable(invoice) {
+        const showVat = Boolean(invoice.vatMode);
+        const currency = invoice.currency;
+        const line = invoice.lines[0];
+        return `
+            <table class="doc-items doc-items-text">
+                <thead>
+                    <tr>
+                        <th class="col-desc">Předmět plnění</th>
+                        ${showVat ? '<th class="num">DPH</th>' : ''}
+                        <th class="num">${showVat ? 'Základ' : 'Částka'}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="col-desc">${Html.escMultiline(line.description)}</td>
+                        ${showVat ? `<td class="num">${line.vatRate} %</td>` : ''}
+                        <td class="num">${Finance.formatMoney(Finance.lineBase(line), currency)}</td>
+                    </tr>
+                </tbody>
+            </table>`;
+    }
+
     function itemsTable(invoice) {
+        if (invoice.itemsMode === 'text' && invoice.lines.length === 1) {
+            return freeTextTable(invoice);
+        }
         const showVat = Boolean(invoice.vatMode);
         const currency = invoice.currency;
         const headCells = [
